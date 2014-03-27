@@ -5,7 +5,7 @@ from boto.mturk.question import *
 ACCESS_ID = '<enter access id here>'
 SECRET_KEY = '<enter secret key here>'
 HOST = 'mechanicalturk.sandbox.amazonaws.com'
-
+AMTResults = []
 mtc = MTurkConnection(aws_access_key_id = ACCESS_ID,
 	              aws_secret_access_key = SECRET_KEY,
 	              host = HOST)
@@ -105,6 +105,61 @@ def getHIT(hit_id):
 		for assignment in assignments:
 			for question_form_answer in assignment.answers[0]:
 				print "%s" % question_form_answer.fields[0]
+
+def Verification(sTurkerResp, sRequest):
+	hit_ids = []
+	for i in range (0,len(sTurkerResp)):
+		#-----Build HITs----#
+		title = "DEVELOPING: Test5"
+		description = "Is the described scene from this movie?"
+		keywords = 'movie, relation, advice'
+		overview = Overview()
+		overview.append_field("Title", title)
+		questionCon = QuestionContent()
+		questionCon.append_field("Title", "Is this scene: \""+sRequest+ "\" from the movie \"" + sTurkerResp[i]+"\"?")
+		cBox = SelectionAnswer(1, 2, 'radiobutton', ('YY','NN'))
+		q1 = Question(identifier='main',
+			        content=questionCon,
+			        answer_spec=AnswerSpecification(cBox),
+			        is_required=True)
+		question_form = QuestionForm()
+		question_form.append(overview)
+		question_form.append(q1)
+		hit_request = mtc.create_hit(questions=question_form,
+			                                max_assignments=1,
+			                                title=title,
+			                                description=description,
+			                                keywords=keywords,
+			                                duration = 60*5,
+			                                reward=0.01)
+							
+		hit = hit_request[0]
+		hit_ids.append(hit.HITId)
+	#----Loop Until Get Result----#
+	responses = []
+	assignments = []
+	while len(hit_ids) > 0:
+		for hit_id in hit_ids:
+			assignments = mtc.get_assignments(hit_id)
+			if (len(assignments) > 0):
+				for assignment in assignments:
+					for question_form_answer in assignment.answers[0]:
+						for value in question_form_answer.fields:
+							responses+=value
+				hit_ids.remove(hit_id)
+		time.sleep(.005)
+	correct = []
+	for i in range(0, len(responses)):
+		if (responses[i] == (u"Y")):
+			correct.append(sTurkerResp[i])
+	AMTResults.append((sRequest, correct))
+	return
+
+def RequestThread(sRequest, sHITName):
+
+	#----Wait for Responses----#
+	
+
 
 def main():
 	counter = 1
