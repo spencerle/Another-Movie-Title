@@ -14,7 +14,7 @@ mtc = MTurkConnection(aws_access_key_id = ACCESS_ID,
 	              host = HOST)
 ia = imdb.IMDb() # by default access the web.
 
-def createHIT(request, hit_name):
+def createHIT(request):
 
 	title = 'DEVELOPING: What movie is this?'
 	description = ('Read the description of the movie below'
@@ -97,8 +97,8 @@ def createHIT(request, hit_name):
 
 	hit = hit_request[0]
 	hit_id = hit.HITId
-	with open('amt_hit_file', 'a') as fd:
-		fd.write(str(hit_id) + ' = ' + hit_name + '\n')
+	with open(ACTIVE_HIT, 'a') as fd:
+		fd.write(str(hit_id) + ' = ' + request + '\n')
 	return hit_id
 
 def getHIT(hit_id):
@@ -269,8 +269,7 @@ def main():
 		if selection == 1:
 			print "\n\nPlease enter a description of the movie you are thinking of. The more details you can provide, the more accurate our results will be."
 			movie_description = raw_input('Description: ')
-			hit_tag = raw_input('\nWhat name do you want give this request?: ')
-			createHIT(movie_description, hit_tag)
+			createHIT(movie_description)
 		
 		#--------------- CHECK STATUS -------------------
 		if selection == 2:
@@ -306,8 +305,6 @@ def main():
 					#--------------- REFINE THIS PART -------------------
 			except:
 					print ("No HITS found. Please create a HIT or View Results.")
-					#sys.stdout.flush()
-					#time.sleep(2)
 					
 		#--------------- VIEW RESULTS -------------------
 		if selection == 3:
@@ -343,5 +340,3 @@ def main():
 							
 			except:
 				print ("No HITS complete at this time.")
-				sys.stdout.flush()
-				#time.sleep(2)
