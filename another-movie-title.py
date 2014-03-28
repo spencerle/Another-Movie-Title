@@ -1,6 +1,8 @@
 from boto.mturk.connection import MTurkConnection
 from boto.mturk.question import *
-
+import imdb
+import time
+import thread
 
 ACCESS_ID = '<enter access id here>'
 SECRET_KEY = '<enter secret key here>'
@@ -9,6 +11,7 @@ AMTResults = []
 mtc = MTurkConnection(aws_access_key_id = ACCESS_ID,
 	              aws_secret_access_key = SECRET_KEY,
 	              host = HOST)
+ia = imdb.IMDb() # by default access the web.
 
 def createHIT(request, hit_name):
 
@@ -159,6 +162,18 @@ def RequestThread(sRequest, sHITName):
 
 	#----Wait for Responses----#
 	
+def outputResults(AMTResults):
+	for i in AMTResults:
+		if AMTResults[0] != 'NULL': 
+				print "Results for %s:" % i[0]
+				for j in i[1]:
+					searchResults = ia.search_movie(j)
+					mainResult = searchResults[0]
+					ia.update(mainResult)
+					print "%s (%s)" %(mainResult['canonical title'], mainResult['year'])
+					print mainResult['plot outline']
+		else:
+			print "Sorry! Turkers could not identify your request for %s." % i[0]
 
 
 def main():
