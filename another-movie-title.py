@@ -122,8 +122,8 @@ def completeHIT(hit_id):
 				with open(COMPLETE_HIT, 'a') as fd_complete:
 					fd_complete.write(line)
 
-def outputResults(hit_id):
-	assignments = mtc.get_assignments(hit_id)
+def outputResults(AMTResults, hit_id):
+	'''assignments = mtc.get_assignments(hit_id)
 	if assignments == []:
 		print "There are no results at this time"
 	else:
@@ -132,18 +132,22 @@ def outputResults(hit_id):
 				AMTResults.append(str(question_form_answer.fields[0]))
 
 	print AMTResults	
-	
-	'''for i in AMTResults:
-		if AMTResults[0] != 'NULL': 
-				print "Results for %s:" % i[0]
-				for j in i[1]:
-					searchResults = ia.search_movie(j)
+	'''
+	for i in AMTResults:
+		#if AMTResults[0] != 'NULL': 
+			print "Results for %s:" % i[0]
+			for j in i[1]:
+				searchResults = ia.search_movie(j)
+				if searchResults:
 					mainResult = searchResults[0]
 					ia.update(mainResult)
 					print "%s (%s)" %(mainResult['canonical title'], mainResult['year'])
 					print mainResult['plot outline']
-		else:
-			print "Sorry! Turkers could not identify your request for %s." % i[0]'''
+				else: 
+					print "Turkers' suggestion not found on IMDB!"
+					print "Raw suggestion: " + j
+		#else:
+		#	print "Sorry! Turkers could not identify your request for %s." % i[0]
 	
 
 def Verification(sTurkerResp, sRequest):
@@ -226,8 +230,8 @@ def RequestThread(sRequest, sHITID):
 	VerifiableResponses = Prescreen(sHITID)
 	#---Call Verification Check----#
 	VerificationResults = Verification(VerifiableResponses, sRequest)
-	print(VerificationResults)
-	#call IMDB with Results
+	#print(VerificationResults)
+	outputResults(TupleFinalResults, sHITID)
 	return
 	
 def AcceptRejectVerified(VerifiedResults, sHITID):
