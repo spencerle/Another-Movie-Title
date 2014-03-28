@@ -178,12 +178,12 @@ def RequestThread(sRequest, sHITID):
 	for response in TurkerResults:
 		VerifiableResponses.append(response[3])
 	VerificationResults = Verification(VerifiableResponses, sRequest)
-	
 	print(VerificationResults)
 	#call IMDB with Results
 	return
 
 def AcceptRejectVerified(VerifiedResults, sHITID):
+	#----Get All Assignments from this HIT
 	assignlist = mtc.get_assignments(sHITID)
 	for assignment in assignlist:
 		value = assignment.answers[0][3]
@@ -203,4 +203,4 @@ def main():
 	RequestThread("TEST", HITID)
 	AcceptRejectVerified("",HITID)
 	#thread.start_new_thread(RequestThread, ("TEST", HITID))
-main()
+main()#FUCK YOU GIT
