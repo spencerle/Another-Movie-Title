@@ -122,32 +122,22 @@ def completeHIT(hit_id):
 				with open(COMPLETE_HIT, 'a') as fd_complete:
 					fd_complete.write(line)
 
-def outputResults(AMTResults, hit_id):
-	'''assignments = mtc.get_assignments(hit_id)
-	if assignments == []:
-		print "There are no results at this time"
-	else:
-		for assignment in assignments:
-			for question_form_answer in assignment.answers[0]:
-				AMTResults.append(str(question_form_answer.fields[0]))
+def outputResults(AMTResults):
+	movieInfo = []
+	for movie in AMTResults:
+		searchResults = ia.search_movie(movie)
+		if searchResults:
+			mainResult = searchResults[0]
+			ia.update(mainResult)
+			print "%s (%s)" %(mainResult['canonical title'], mainResult['year'])
+			print mainResult['plot outline']
+			movieInfo.append([mainResult['canonical title'], mainResult['year'], mainResult['plot outline']])
+		else: 
+			print "Turkers' suggestion not found on IMDB!"
+			print "Raw suggestion: " + movie
+			movieInfo.append([movie, "(No year)", "(No outline)"])
+	return movieInfo
 
-	print AMTResults	
-	'''
-	for i in AMTResults:
-		#if AMTResults[0] != 'NULL': 
-			print "Results for %s:" % i[0]
-			for j in i[1]:
-				searchResults = ia.search_movie(j)
-				if searchResults:
-					mainResult = searchResults[0]
-					ia.update(mainResult)
-					print "%s (%s)" %(mainResult['canonical title'], mainResult['year'])
-					print mainResult['plot outline']
-				else: 
-					print "Turkers' suggestion not found on IMDB!"
-					print "Raw suggestion: " + j
-		#else:
-		#	print "Sorry! Turkers could not identify your request for %s." % i[0]
 	
 
 def Verification(sTurkerResp, sRequest):
@@ -206,7 +196,7 @@ def Prescreen(sHITID):
 	for assignment in assignlist:
 		answerOne = assignment.answers[0][0].fields
 		answerTwo = assignment.answers[0][1].fields
-		answerTwo = answerTwo[:5]
+		answerTwo = answerTwo[:6]
 		answerThree = assignment.answers[0][2].fields
 		if (answerOne.lower() == "ariel") and (answerTwo.lower() == "friday") and (answerThree.lower() == "rosebud"):
 			returnlist.append(assignment.answers[0][3])
