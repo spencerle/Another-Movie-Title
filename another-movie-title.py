@@ -6,7 +6,9 @@ import imdb
 ACCESS_ID = 'AKIAJFHM2HK3FZZAJLAA'
 SECRET_KEY = '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'
 HOST = 'mechanicalturk.sandbox.amazonaws.com'
-ACTIVEHITSFNAME = 'active_hit.file'
+ACTIVE_HIT = 'active_hit'
+COMPLETE_HIT = 'complete_hit'
+AMTResults = []
 mtc = MTurkConnection(aws_access_key_id = ACCESS_ID,
 	              aws_secret_access_key = SECRET_KEY,
 	              host = HOST)
@@ -103,11 +105,45 @@ def getHIT(hit_id):
 	assignments = mtc.get_assignments(hit_id)
 	if assignments == []:
 		print "There are no results at this time"
-		
 	else:
 		for assignment in assignments:
 			for question_form_answer in assignment.answers[0]:
 				print "%s" % question_form_answer.fields[0]
+
+def completeHIT(hit_id):
+	with open(ACTIVE_HIT, 'r') as fd:
+		lines = fd.readlines()
+	with open(ACTIVE_HIT, 'w') as fd:
+		for line in lines:
+			id = line[:30]
+			if id != str(hit_id):
+				fd.write(line)
+			else:
+				with open(COMPLETE_HIT, 'a') as fd_complete:
+					fd_complete.write(line)
+
+def outputResults(hit_id):
+	assignments = mtc.get_assignments(hit_id)
+	if assignments == []:
+		print "There are no results at this time"
+	else:
+		for assignment in assignments:
+			for question_form_answer in assignment.answers[0]:
+				AMTResults.append(str(question_form_answer.fields[0]))
+
+	print AMTResults	
+	
+	'''for i in AMTResults:
+		if AMTResults[0] != 'NULL': 
+				print "Results for %s:" % i[0]
+				for j in i[1]:
+					searchResults = ia.search_movie(j)
+					mainResult = searchResults[0]
+					ia.update(mainResult)
+					print "%s (%s)" %(mainResult['canonical title'], mainResult['year'])
+					print mainResult['plot outline']
+		else:
+			print "Sorry! Turkers could not identify your request for %s." % i[0]'''
 	
 
 def Verification(sTurkerResp, sRequest):
@@ -194,19 +230,6 @@ def RequestThread(sRequest, sHITID):
 	#call IMDB with Results
 	return
 	
-def outputResults(AMTResults):
-	for i in AMTResults:
-		if AMTResults[0] != 'NULL': 
-				print "Results for %s:" % i[0]
-				for j in i[1]:
-					searchResults = ia.search_movie(j)
-					mainResult = searchResults[0]
-					ia.update(mainResult)
-					print "%s (%s)" %(mainResult['canonical title'], mainResult['year'])
-					print mainResult['plot outline']
-		else:
-			print "Sorry! Turkers could not identify your request for %s." % i[0]
-
 def AcceptRejectVerified(VerifiedResults, sHITID):
 	#----Get All Assignments from this HIT
 	assignlist = mtc.get_assignments(sHITID)
@@ -224,9 +247,97 @@ def LoadActiveHits():
 	pass
 
 def main():
-	HITID = createHIT("TEST", "DUDE")
-	print (HITID)
-	RequestThread("TEST", HITID)
-	AcceptRejectVerified("",HITID)
-	#thread.start_new_thread(RequestThread, ("TEST", HITID))
-main()#FUCK YOU GIT
+	print "\n---Welcome to Turkleton's Another Movie Title!---"
+		
+	while True:
+		selection = 0
+		bad_input = True
+		print "\n\nWhat would you like to do?"
+		print "\n1.) Make a request\n2.) Check request status\n3.) View results"
+		while bad_input:
+			try:
+				selection = int(input('\nEnter the number of your selection: '))
+				bad_input = False
+			except:
+				print "The input needs to be an integer. Please try again"
+		
+		#--------------- CREATE A HIT -------------------
+		if selection == 1:
+			print "\n\nPlease enter a description of the movie you are thinking of. The more details you can provide, the more accurate our results will be."
+			movie_description = raw_input('Description: ')
+			hit_tag = raw_input('\nWhat name do you want give this request?: ')
+			createHIT(movie_description, hit_tag)
+		
+		#--------------- CHECK STATUS -------------------
+		if selection == 2:
+			hits = []
+			try:		
+				with open(ACTIVE_HIT, 'r') as fd:
+					for line in fd:
+						key = line[:30]
+						label = line[33:]
+						hits.append((key,label))
+						
+					#--------------- CHECK FOR EMPTY FILE -------------------
+					if hits == []:
+						raise Error()
+						
+					#--------------- PRINT HIT OPTIONS -------------------
+					counter = 1
+					for hit in hits:
+						print (str(counter) + '.) ' + hit[1]),
+						counter+=1
+					
+					#--------------- Retrieve user input -------------------
+					bad_input = True
+					while bad_input:
+						try:
+							selection = int(input('\nEnter the number of your selection: '))
+							bad_input = False
+						except:
+							print "The input needs to be an integer. Please try again"
+						
+					#--------------- REFINE THIS PART -------------------							
+					completeHIT(hits[selection-1][0])
+					#--------------- REFINE THIS PART -------------------
+			except:
+					print ("No HITS found. Please create a HIT or View Results.")
+					#sys.stdout.flush()
+					#time.sleep(2)
+					
+		#--------------- VIEW RESULTS -------------------
+		if selection == 3:
+			hits = []
+			try:
+				#--------------- PULL CURRENT HITS -------------------
+				with open(COMPLETE_HIT, 'r') as fd:
+					for line in fd:
+						key = line[:30]
+						label = line[33:]
+						hits.append((key,label))
+						
+					#--------------- CHECK FOR EMPTY FILE -------------------
+					if hits == []:
+						raise Error()
+						
+					#--------------- PRINT HIT OPTIONS -------------------
+					counter = 1
+					for hit in hits:
+						print (str(counter) + '.) ' + hit[1]),
+						counter+=1
+					
+					#--------------- Retrieve user input -------------------
+					bad_input = True
+					while bad_input:
+						try:
+							selection = int(input('\nEnter the number of your selection: '))
+							bad_input = False
+						except:
+							print "The input needs to be an integer. Please try again"
+													
+					getHIT(hits[selection-1][0])					
+							
+			except:
+				print ("No HITS complete at this time.")
+				sys.stdout.flush()
+				#time.sleep(2)
