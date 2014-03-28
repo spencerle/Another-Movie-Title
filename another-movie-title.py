@@ -27,7 +27,7 @@ def createHIT(request, hit_name):
 	#---------------  BUILD QUESTION 1 -------------------
 	 
 	qc1 = QuestionContent()
-	qc1.append_field('Title','Who is the main character of the little mermaid?')
+	qc1.append_field('Title','Who is the main character of The Little Mermaid?')
 	 
 	fta1 = FreeTextAnswer()
 	 
@@ -108,6 +108,7 @@ def getHIT(hit_id):
 		for assignment in assignments:
 			for question_form_answer in assignment.answers[0]:
 				print "%s" % question_form_answer.fields[0]
+	
 
 def Verification(sTurkerResp, sRequest):
 	hit_ids = []
@@ -159,6 +160,19 @@ def Verification(sTurkerResp, sRequest):
 	AMTResults.append((sRequest, correct))
 	return AMTResults
 
+def Prescreen(sHITID):
+	assignlist = mtc.get_assignments(sHITID)
+	returnlist = []
+	for assignment in assignlist:
+		answerOne = assignment.answers[0][0].fields
+		answerTwo = assignment.answers[0][1].fields
+		answerTwo = answerTwo[:5]
+		answerThree = assignment.answers[0][2].fields
+		if (answerOne.lower() == "ariel") and (answerTwo.lower() == "friday") and (answerThree.lower() == "rosebud"):
+			returnlist.append(assignment.answers[0][3])
+		mtc.reject_assignment(assignment.AssignmentId, "Failed Pre-Screening")
+	return returnlist
+
 def RequestThread(sRequest, sHITID):
 	#----Wait for Responses----#
 	TurkResponse = []
@@ -166,18 +180,15 @@ def RequestThread(sRequest, sHITID):
 		TurkResponse = mtc.get_assignments(sHITID)
 	TurkerResults = []
 	#---Get the Responses----#
-	for assignment in TurkResponse:
-		SingleTurkResponse = []
-		for question_form_answer in assignment.answers[0]:
-			for value in question_form_answer.fields:
-				SingleTurkResponse.append(value)
-		TurkerResults.append(SingleTurkResponse)
-	print(TurkerResults)
-	##Validate Turker Answers and Accept/Reject
+	#for assignment in TurkResponse:
+	#	SingleTurkResponse = []
+	#	for question_form_answer in assignment.answers[0]:
+	#		for value in question_form_answer.fields:
+	#			SingleTurkResponse.append(value)
+	#	TurkerResults.append(SingleTurkResponse)
+	#print(TurkerResults)
+	VerifiableResponses = Prescreen(sHITID)
 	#---Call Verification Check----#
-	VerifiableResponses = []
-	for response in TurkerResults:
-		VerifiableResponses.append(response[3])
 	VerificationResults = Verification(VerifiableResponses, sRequest)
 	print(VerificationResults)
 	#call IMDB with Results
@@ -207,10 +218,11 @@ def AcceptRejectVerified(VerifiedResults, sHITID):
 				Found = True
 				mtc.approve_assignment(assignment.AssignmentId)
 		if not Found:
-			mtc.reject_assignment(assignment.AssignmentId, "Failed Pre-Screening")	
+			mtc.reject_assignment(assignment.AssignmentId, "Failed Verification")	
 			
 def LoadActiveHits():
 	pass
+
 def main():
 	HITID = createHIT("TEST", "DUDE")
 	print (HITID)
