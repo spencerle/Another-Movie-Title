@@ -8,7 +8,6 @@ SECRET_KEY = 'MULm3QQwz4UyL/TsNUjG6bBvHL4LESAQLFSOtLw3'
 HOST = 'mechanicalturk.sandbox.amazonaws.com'
 ACTIVE_HIT = 'active_hit'
 COMPLETE_HIT = 'complete_hit'
-AMTResults = []
 mtc = MTurkConnection(aws_access_key_id = ACCESS_ID,
 	              aws_secret_access_key = SECRET_KEY,
 	              host = HOST)
@@ -172,16 +171,20 @@ def Verification(sTurkerResp, sRequest):
 	#----Loop Until Get Result----#
 	responses = []
 	assignments = []
-	while len(hit_ids) > 0:
+	while len(hit_ids) > 0: #As long as a single HIT hasn't been completed, keep waiting
 		for hit_id in hit_ids:
+			#----Go through each HIT ans check to see if it's been completed or not----#
 			assignments = mtc.get_assignments(hit_id)
+			#----If the HIT has been completed, add the response----#
 			if (len(assignments) > 0):
 				for assignment in assignments:
 					for question_form_answer in assignment.answers[0]:
 						for value in question_form_answer.fields:
 							responses+=value
+					mtc.approve_assignment(assignment.AssignmentId)
 				hit_ids.remove(hit_id)
-		time.sleep(.005)
+		time.sleep(.005) #Sleep to prevent us from monopolizing the CPU
+	#Throw out any that are marked as wrong	
 	correct = []
 	for i in range(0, len(responses)):
 		if (responses[i] == (u"Y")):
@@ -194,12 +197,12 @@ def Prescreen(sHITID):
 	assignlist = mtc.get_assignments(sHITID)
 	returnlist = []
 	for assignment in assignlist:
-		answerOne = assignment.answers[0][0].fields
-		answerTwo = assignment.answers[0][1].fields
+		answerOne = assignment.answers[0][0].fields[0]
+		answerTwo = assignment.answers[0][1].fields[0]
 		answerTwo = answerTwo[:6]
-		answerThree = assignment.answers[0][2].fields
+		answerThree = assignment.answers[0][2].fields[0]
 		if (answerOne.lower() == "ariel") and (answerTwo.lower() == "friday") and (answerThree.lower() == "rosebud"):
-			returnlist.append(assignment.answers[0][3])
+			returnlist.append(assignment.answers[0][3].fields[0])
 		mtc.reject_assignment(assignment.AssignmentId, "Failed Pre-Screening")
 	return returnlist
 
@@ -208,37 +211,52 @@ def RequestThread(sRequest, sHITID):
 	TurkResponse = []
 	while (len(TurkResponse) < 1):
 		TurkResponse = mtc.get_assignments(sHITID)
-	TurkerResults = []
-	#---Get the Responses----#
-	#for assignment in TurkResponse:
-	#	SingleTurkResponse = []
-	#	for question_form_answer in assignment.answers[0]:
-	#		for value in question_form_answer.fields:
-	#			SingleTurkResponse.append(value)
-	#	TurkerResults.append(SingleTurkResponse)
-	#print(TurkerResults)
+	#---Throw out any that fail trivia check---#
 	VerifiableResponses = Prescreen(sHITID)
 	#---Call Verification Check----#
 	VerificationResults = Verification(VerifiableResponses, sRequest)
-	#print(VerificationResults)
-	outputResults(TupleFinalResults, sHITID)
+	#Breaking Up Tuple(Legacy thing for IMDB)
+	ResponseName, TestResults = VerificationResults[0]
+	#Get the Final Results list
+	FinalResults = AcceptRejectVerified(TestResults,sHITID)
+	if (len(FinalResults) == 0):
+		print("No results found for HIT: "+sHITID)
+		return
+	TupleFinalResults = []
+	TupleFinalResults.append((sRequest, FinalResults))
+	#call IMDB with Results
 	return
 	
 def AcceptRejectVerified(VerifiedResults, sHITID):
 	#----Get All Assignments from this HIT
 	assignlist = mtc.get_assignments(sHITID)
+	returnResults = []
 	for assignment in assignlist:
-		value = assignment.answers[0][3]
+		value = assignment.answers[0][3].fields[0]
 		Found = False
 		for Result in VerifiedResults:
 			if Result.lower() == value.lower():
 				Found = True
-				mtc.approve_assignment(assignment.AssignmentId)
+				try:
+					mtc.approve_assignment(assignment.AssignmentId)
+				except:
+					pass
+				returnResults.append(value)
 		if not Found:
-			mtc.reject_assignment(assignment.AssignmentId, "Failed Verification")	
-			
-def LoadActiveHits():
-	pass
+			try:
+				mtc.reject_assignment(assignment.AssignmentId, "Failed Pre-Screening")
+			except:
+				pass
+	return returnResults
+
+def LoadActiveHits(sHITIDS, sRequests):
+	if (len(sHITIDS) != len(sRequests)):
+		#THE HELL IS GOING ON, WE'RE FUBARED!!!!!!!!
+		return
+	for i in range(0, len(sHITIDS)):
+		thread.start_new_thread(RequestThread, (sRequests[i], sHITIDS[i]))
+	print("All active HITs loaded and Threads started")	
+	return
 
 def main():
 	print "\n---Welcome to Turkleton's Another Movie Title!---"
