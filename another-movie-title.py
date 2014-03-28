@@ -1,11 +1,12 @@
 from boto.mturk.connection import MTurkConnection
 from boto.mturk.question import *
+import time
+import thread
 
-
-ACCESS_ID = '<enter access id here>'
-SECRET_KEY = '<enter secret key here>'
+ACCESS_ID = 'AKIAJFHM2HK3FZZAJLAA'
+SECRET_KEY = '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'
 HOST = 'mechanicalturk.sandbox.amazonaws.com'
-AMTResults = []
+ACTIVEHITSFNAME = 'active_hit.file'
 mtc = MTurkConnection(aws_access_key_id = ACCESS_ID,
 	              aws_secret_access_key = SECRET_KEY,
 	              host = HOST)
@@ -82,7 +83,7 @@ def createHIT(request, hit_name):
 	#--------------- CREATE THE HIT -------------------
 	
 	hit_request = mtc.create_hit(questions=question_form,
-					max_assignments=5,
+					max_assignments=2,
 					title=title,
 					description=description,
 					keywords=keywords,
@@ -95,6 +96,7 @@ def createHIT(request, hit_name):
 	hit_id = hit.HITId
 	with open('amt_hit_file', 'a') as fd:
 		fd.write(str(hit_id) + ' = ' + hit_name + '\n')
+	return hit_id
 
 def getHIT(hit_id):
 	assignments = mtc.get_assignments(hit_id)
@@ -152,39 +154,53 @@ def Verification(sTurkerResp, sRequest):
 	for i in range(0, len(responses)):
 		if (responses[i] == (u"Y")):
 			correct.append(sTurkerResp[i])
+	AMTResults = []
 	AMTResults.append((sRequest, correct))
+	return AMTResults
+
+def RequestThread(sRequest, sHITID):
+	#----Wait for Responses----#
+	TurkResponse = []
+	while (len(TurkResponse) < 1):
+		TurkResponse = mtc.get_assignments(sHITID)
+	TurkerResults = []
+	#---Get the Responses----#
+	for assignment in TurkResponse:
+		SingleTurkResponse = []
+		for question_form_answer in assignment.answers[0]:
+			for value in question_form_answer.fields:
+				SingleTurkResponse.append(value)
+		TurkerResults.append(SingleTurkResponse)
+	print(TurkerResults)
+	##Validate Turker Answers and Accept/Reject
+	#---Call Verification Check----#
+	VerifiableResponses = []
+	for response in TurkerResults:
+		VerifiableResponses.append(response[3])
+	VerificationResults = Verification(VerifiableResponses, sRequest)
+	
+	print(VerificationResults)
+	#call IMDB with Results
 	return
 
-def RequestThread(sRequest, sHITName):
-
-	#----Wait for Responses----#
-	
-
-
+def AcceptRejectVerified(VerifiedResults, sHITID):
+	assignlist = mtc.get_assignments(sHITID)
+	for assignment in assignlist:
+		value = assignment.answers[0][3]
+		Found = False
+		for Result in VerifiedResults:
+			if Result.lower() == value.lower():
+				Found = True
+				mtc.approve_assignment(assignment.AssignmentId)
+		if not Found:
+			mtc.reject_assignment(assignment.AssignmentId, "Failed Pre-Screening")	
+			
+def LoadActiveHits():
+	pass
 def main():
-	counter = 1
-	print "Which HIT do you want to see?"
-	hits = []
-	
-	#--------------- PULL CURRENT HITS -------------------
-	with open('amt_hit_file', 'r') as fd:
-		for line in fd:
-			key = line[:30]
-			label = line[33:]
-			hits.append((key,label))
-	
-	#--------------- PRINT HIT OPTIONS -------------------
-	for hit in hits:
-		print (str(counter) + '.) ' + hit[1]),
-		counter+=1
-		
-	#--------------- Retrieve user input -------------------
-	bad_input = True
-	while bad_input:
-		try:
-			selection = int(input('\nEnter the number of your selection: '))
-			bad_input = False
-		except:
-			print "The input needs to be an integer. Please try again"
-		
-	getHIT(hits[selection-1][0])
+	HITID = createHIT("TEST", "DUDE")
+	print (HITID)
+	RequestThread("TEST", HITID)
+	AcceptRejectVerified("",HITID)
+	#thread.start_new_thread(RequestThread, ("TEST", HITID))
+main()
