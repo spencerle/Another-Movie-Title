@@ -3,8 +3,8 @@ from boto.mturk.question import *
 import time
 import thread
 import imdb
-ACCESS_ID = 'AKIAJFHM2HK3FZZAJLAA'
-SECRET_KEY = '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'
+ACCESS_ID = 'AKIAJZH2OMW6WNOX6H6Q'
+SECRET_KEY = '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'
 HOST = 'mechanicalturk.sandbox.amazonaws.com'
 ACTIVE_HIT = 'active_hit'
 COMPLETE_HIT = 'complete_hit'
@@ -101,15 +101,15 @@ def createHIT(request):
 	return hit_id
 
 def getHIT(hit_id):
-	assignments = mtc.get_assignments(hit_id)
-	if assignments == []:
-		print "There are no results at this time"
-	else:
-		for assignment in assignments:
-			for question_form_answer in assignment.answers[0]:
-				print "%s" % question_form_answer.fields[0]
+	with open(COMPLETE_HIT, 'r') as fd:
+		for line in fd:
+			if hit_id == line[:30]:
+				results = line[33:].strip().split('|')
+				print '\nMovie: ' + str(results[1])
+				print 'Year: ' + str(results[2])
+				print 'Synopsis: ' + str(results[3])
 
-def completeHIT(hit_id):
+def completeHIT(hit_id, IMDBResults):
 	with open(ACTIVE_HIT, 'r') as fd:
 		lines = fd.readlines()
 	with open(ACTIVE_HIT, 'w') as fd:
@@ -119,6 +119,9 @@ def completeHIT(hit_id):
 				fd.write(line)
 			else:
 				with open(COMPLETE_HIT, 'a') as fd_complete:
+					line = line[:-1] 
+					for result in IMDBResults[0]:
+						line += ' | ' + str(result)
 					fd_complete.write(line)
 
 def outputResults(AMTResults):
@@ -128,12 +131,12 @@ def outputResults(AMTResults):
 		if searchResults:
 			mainResult = searchResults[0]
 			ia.update(mainResult)
-			print "%s (%s)" %(mainResult['canonical title'], mainResult['year'])
-			print mainResult['plot outline']
+			#print "%s (%s)" %(mainResult['canonical title'], mainResult['year'])
+			#print mainResult['plot outline']
 			movieInfo.append([mainResult['canonical title'], mainResult['year'], mainResult['plot outline']])
 		else: 
-			print "Turkers' suggestion not found on IMDB!"
-			print "Raw suggestion: " + movie
+			#print "Turkers' suggestion not found on IMDB!"
+			#print "Raw suggestion: " + movie
 			movieInfo.append([movie, "(No year)", "(No outline)"])
 	return movieInfo
 
@@ -189,9 +192,7 @@ def Verification(sTurkerResp, sRequest):
 	for i in range(0, len(responses)):
 		if (responses[i] == (u"Y")):
 			correct.append(sTurkerResp[i])
-	AMTResults = []
-	AMTResults.append((sRequest, correct))
-	return AMTResults
+	return correct
 
 def Prescreen(sHITID):
 	assignlist = mtc.get_assignments(sHITID)
@@ -203,7 +204,11 @@ def Prescreen(sHITID):
 		answerThree = assignment.answers[0][2].fields[0]
 		if (answerOne.lower() == "ariel") and (answerTwo.lower() == "friday") and (answerThree.lower() == "rosebud"):
 			returnlist.append(assignment.answers[0][3].fields[0])
-		mtc.reject_assignment(assignment.AssignmentId, "Failed Pre-Screening")
+		else:
+			try:
+				mtc.reject_assignment(assignment.AssignmentId, "Failed Pre-Screening")
+			except:
+				pass
 	return returnlist
 
 def RequestThread(sRequest, sHITID):
@@ -215,16 +220,14 @@ def RequestThread(sRequest, sHITID):
 	VerifiableResponses = Prescreen(sHITID)
 	#---Call Verification Check----#
 	VerificationResults = Verification(VerifiableResponses, sRequest)
-	#Breaking Up Tuple(Legacy thing for IMDB)
-	ResponseName, TestResults = VerificationResults[0]
 	#Get the Final Results list
-	FinalResults = AcceptRejectVerified(TestResults,sHITID)
+	FinalResults = AcceptRejectVerified(VerificationResults,sHITID)
 	if (len(FinalResults) == 0):
 		print("No results found for HIT: "+sHITID)
 		return
-	TupleFinalResults = []
-	TupleFinalResults.append((sRequest, FinalResults))
 	#call IMDB with Results
+	IMDBResults = outputResults(FinalResults)
+	completeHIT(sHITID, IMDBResults)
 	return
 	
 def AcceptRejectVerified(VerifiedResults, sHITID):
@@ -259,6 +262,16 @@ def LoadActiveHits(sHITIDS, sRequests):
 	return
 
 def main():
+	hit_ids = []
+	labels = []	
+	with open(ACTIVE_HIT, 'r') as fd:
+		for line in fd:
+			key = line[:30]
+			label = line[33:]
+			hit_ids.append(key)
+			labels.append(label)
+	LoadActiveHits(hit_ids, labels)
+	
 	print "\n---Welcome to Turkleton's Another Movie Title!---"
 		
 	while True:
@@ -277,7 +290,8 @@ def main():
 		if selection == 1:
 			print "\n\nPlease enter a description of the movie you are thinking of. The more details you can provide, the more accurate our results will be."
 			movie_description = raw_input('Description: ')
-			createHIT(movie_description)
+			hitid = createHIT(movie_description)
+			thread.start_new_thread(RequestThread,(movie_description,hitid))
 		
 		#--------------- CHECK STATUS -------------------
 		if selection == 2:
@@ -298,19 +312,6 @@ def main():
 					for hit in hits:
 						print (str(counter) + '.) ' + hit[1]),
 						counter+=1
-					
-					#--------------- Retrieve user input -------------------
-					bad_input = True
-					while bad_input:
-						try:
-							selection = int(input('\nEnter the number of your selection: '))
-							bad_input = False
-						except:
-							print "The input needs to be an integer. Please try again"
-						
-					#--------------- REFINE THIS PART -------------------							
-					completeHIT(hits[selection-1][0])
-					#--------------- REFINE THIS PART -------------------
 			except:
 					print ("No HITS found. Please create a HIT or View Results.")
 					
@@ -332,7 +333,8 @@ def main():
 					#--------------- PRINT HIT OPTIONS -------------------
 					counter = 1
 					for hit in hits:
-						print (str(counter) + '.) ' + hit[1]),
+						results = hit[1].strip().split('|')
+						print (str(counter) + '.) ' + results[0]),
 						counter+=1
 					
 					#--------------- Retrieve user input -------------------
