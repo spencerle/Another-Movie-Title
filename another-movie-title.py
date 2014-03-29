@@ -15,7 +15,7 @@ ia = imdb.IMDb() # by default access the web.
 
 def createHIT(request):
 
-	title = 'DEVELOPING: What movie is this?'
+	title = 'What movie is this description from?'
 	description = ('Read the description of the movie below'
 		       ' and give an answer as to which movie it is.')
 	keywords = 'movie, relation, advice'
@@ -23,12 +23,12 @@ def createHIT(request):
 	#---------------  BUILD OVERVIEW -------------------
 	 
 	overview = Overview()
-	overview.append_field('Title', 'DEVELOPING: What movie is this?')
+	overview.append_field('Title', 'Prescreening Questions:')
 	 
 	#---------------  BUILD QUESTION 1 -------------------
 	 
 	qc1 = QuestionContent()
-	qc1.append_field('Title','Who is the main character of The Little Mermaid?')
+	qc1.append_field('Text','Who is the main character of The Little Mermaid?')
 	 
 	fta1 = FreeTextAnswer()
 	 
@@ -40,7 +40,7 @@ def createHIT(request):
 	#---------------  BUILD QUESTION 2 -------------------
 	 
 	qc2 = QuestionContent()
-	qc2.append_field('Title','Which movie series features a killer in a hockey mask?')
+	qc2.append_field('Text','Which movie series features a killer in a hockey mask?')
 	 
 	fta2 = FreeTextAnswer()
 	 
@@ -52,7 +52,7 @@ def createHIT(request):
 	#---------------  BUILD QUESTION 3 -------------------
 	 
 	qc3 = QuestionContent()
-	qc3.append_field('Title',"What is Kane's last word in 'Citizen Kane'?")
+	qc3.append_field('Text',"What is Kane's last word in 'Citizen Kane'?")
 	 
 	fta3 = FreeTextAnswer()
 	 
@@ -60,11 +60,17 @@ def createHIT(request):
 		      content=qc3,
 		      answer_spec=AnswerSpecification(fta3),
 		      is_required=True)
+		      
+	#---------------  REQUEST OVERVIEW -------------------
+	 
+	instructions = Overview()
+	overview.append_field('Title', 'Give the movie title that the following scene/description is from:')
+	 
 	 
 	#---------------  BUILD QUESTION 4 -------------------
 	 
 	qc4 = QuestionContent()
-	qc4.append_field('Title', request)
+	qc4.append_field('Text', request)
 	 
 	fta4 = FreeTextAnswer()
 	 
@@ -80,6 +86,7 @@ def createHIT(request):
 	question_form.append(q1)
 	question_form.append(q2)
 	question_form.append(q3)
+	question_form.append(instructions)
 	question_form.append(q4)
 	 
 	#--------------- CREATE THE HIT -------------------
@@ -146,7 +153,7 @@ def Verification(sTurkerResp, sRequest):
 	hit_ids = []
 	for i in range (0,len(sTurkerResp)):
 		#-----Build HITs----#
-		title = "DEVELOPING: Test5"
+		title = "Turker Movie Verification"
 		description = "Is the described scene from this movie?"
 		keywords = 'movie, relation, advice'
 		overview = Overview()
