@@ -3,8 +3,8 @@ from boto.mturk.question import *
 import time
 import thread
 import imdb
-ACCESS_ID = 'AKIAJZH2OMW6WNOX6H6Q'
-SECRET_KEY = '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'
+ACCESS_ID = 'access id'
+SECRET_KEY = 'secret key'
 HOST = 'mechanicalturk.sandbox.amazonaws.com'
 ACTIVE_HIT = 'active_hit'
 COMPLETE_HIT = 'complete_hit'
