@@ -64,7 +64,7 @@ def createHIT(request):
 	#---------------  REQUEST OVERVIEW -------------------
 	 
 	instructions = Overview()
-	overview.append_field('Title', 'Give the movie title that the following scene/description is from:')
+	instructions.append_field('Title', 'Give the movie title that the following scene/description is from:')
 	 
 	 
 	#---------------  BUILD QUESTION 4 -------------------
