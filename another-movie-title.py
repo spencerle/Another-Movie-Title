@@ -8,6 +8,7 @@ SECRET_KEY = 'secret key'
 HOST = 'mechanicalturk.sandbox.amazonaws.com'
 ACTIVE_HIT = 'active_hit'
 COMPLETE_HIT = 'complete_hit'
+HITSIZE = 1
 mtc = MTurkConnection(aws_access_key_id = ACCESS_ID,
 	              aws_secret_access_key = SECRET_KEY,
 	              host = HOST)
@@ -92,7 +93,7 @@ def createHIT(request):
 	#--------------- CREATE THE HIT -------------------
 	
 	hit_request = mtc.create_hit(questions=question_form,
-					max_assignments=2,
+					max_assignments=HITSIZE,
 					title=title,
 					description=description,
 					keywords=keywords,
@@ -221,14 +222,24 @@ def Prescreen(sHITID):
 def RequestThread(sRequest, sHITID):
 	#----Wait for Responses----#
 	TurkResponse = []
-	while (len(TurkResponse) < 1):
+	while (len(TurkResponse) < HITSIZE):
 		TurkResponse = mtc.get_assignments(sHITID)
 	#---Throw out any that fail trivia check---#
-	VerifiableResponses = Prescreen(sHITID)
+	Responses = Prescreen(sHITID)
+	#---Check to see if any have already been accepted---#
+	Unverified = []
+	for assignment in mtc.get_assignments(sHITID):
+		#---Assignment hasn't been accepted or rejected yet, so it needs to be put through verification---#
+		if (assignment.AssignmentStatus == "Submitted"):
+			Unverified.append(assignment.answers[0][3].fields[0])
+			Responses.remove(assignment.answers[0][3].fields[0])
 	#---Call Verification Check----#
-	VerificationResults = Verification(VerifiableResponses, sRequest)
+	VerificationResults = Verification(Unverified, sRequest)
 	#Get the Final Results list
 	FinalResults = AcceptRejectVerified(VerificationResults,sHITID)
+	#---Recompile all results together---#
+	for response in Responses:
+		FinalResults.append(response)
 	if (len(FinalResults) == 0):
 		print("No results found for HIT: "+sHITID)
 		return
@@ -263,6 +274,7 @@ def LoadActiveHits(sHITIDS, sRequests):
 	if (len(sHITIDS) != len(sRequests)):
 		#THE HELL IS GOING ON, WE'RE FUBARED!!!!!!!!
 		return
+	print(sHITIDS)
 	for i in range(0, len(sHITIDS)):
 		thread.start_new_thread(RequestThread, (sRequests[i], sHITIDS[i]))
 	print("All active HITs loaded and Threads started")	
@@ -278,7 +290,6 @@ def main():
 			hit_ids.append(key)
 			labels.append(label)
 	LoadActiveHits(hit_ids, labels)
-	
 	print "\n---Welcome to Turkleton's Another Movie Title!---"
 		
 	while True:
@@ -357,3 +368,4 @@ def main():
 							
 			except:
 				print ("No HITS complete at this time.")
+main()
