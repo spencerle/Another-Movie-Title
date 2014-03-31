@@ -205,12 +205,19 @@ def Verification(sTurkerResp, sRequest):
 def Prescreen(sHITID):
 	assignlist = mtc.get_assignments(sHITID)
 	returnlist = []
+	successCheck = 0
 	for assignment in assignlist:
 		answerOne = assignment.answers[0][0].fields[0]
 		answerTwo = assignment.answers[0][1].fields[0]
 		answerTwo = answerTwo[:6]
 		answerThree = assignment.answers[0][2].fields[0]
-		if (answerOne.lower() == "ariel") and (answerTwo.lower() == "friday") and (answerThree.lower() == "rosebud"):
+		if (answerOne.lower() == "ariel"):
+			successCheck = successCheck + 1
+		if (answerTwo.lower() == "friday"):
+			successCheck = successCheck + 1
+		if (answerThree.lower() == "rosebud"):
+			successCheck = successCheck + 1
+		if (successCheck >= 2):	
 			returnlist.append(assignment.answers[0][3].fields[0])
 		else:
 			try:
