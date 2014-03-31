@@ -3,12 +3,13 @@ from boto.mturk.question import *
 import time
 import thread
 import imdb
-ACCESS_ID = 'access id'
-SECRET_KEY = 'secret key'
+import sys
+ACCESS_ID = 'Access ID'
+SECRET_KEY = 'Wouldnt you like to know?'
 HOST = 'mechanicalturk.sandbox.amazonaws.com'
 ACTIVE_HIT = 'active_hit'
 COMPLETE_HIT = 'complete_hit'
-HITSIZE = 1
+HITSIZE = 10
 mtc = MTurkConnection(aws_access_key_id = ACCESS_ID,
 	              aws_secret_access_key = SECRET_KEY,
 	              host = HOST)
@@ -130,6 +131,7 @@ def completeHIT(hit_id, IMDBResults):
 					line = line[:-1] 
 					for result in IMDBResults[0]:
 						line += ' | ' + str(result)
+					line += '\n'
 					fd_complete.write(line)
 
 def outputResults(AMTResults):
@@ -303,7 +305,7 @@ def main():
 		selection = 0
 		bad_input = True
 		print "\n\nWhat would you like to do?"
-		print "\n1.) Make a request\n2.) Check request status\n3.) View results"
+		print "\n1.) Make a request\n2.) Check request status\n3.) View results\n4.) Exit"
 		while bad_input:
 			try:
 				selection = int(input('\nEnter the number of your selection: '))
@@ -375,4 +377,9 @@ def main():
 							
 			except:
 				print ("No HITS complete at this time.")
+                
+        #--------------- EXIT -------------------
+                
+        if selection == 4:
+			sys.exit(0)
 main()
